@@ -37,6 +37,10 @@ void BasicMIDI::begin(Adafruit_NeoTrellisM4 *x){
   trellis = x;
 }
 
+void BasicMIDI::restart(){
+//  TODO: send midi panic
+}
+
 void BasicMIDI::run() {
   while (trellis->available()){
     keypadEvent e = trellis->read();

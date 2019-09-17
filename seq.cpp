@@ -51,6 +51,9 @@ void Seq::begin(Adafruit_NeoTrellisM4 *x){
   TC.startTimer(100000, newBeat);
 }
 
+void Seq::restart(){
+  beat=0;
+}
 void Seq::run() {
   
   while (trellis->available()){

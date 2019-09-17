@@ -10,6 +10,7 @@ class Seq{
     Seq();
     void run();
     void begin(Adafruit_NeoTrellisM4 *x);
+    void restart();
     Adafruit_NeoTrellisM4 *trellis;
     byte root;
     byte note_memory[32];

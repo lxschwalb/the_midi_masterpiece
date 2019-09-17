@@ -5,6 +5,7 @@
 #include "basicMIDI.h"
 #include "accel.h"
 #include "pedalboard.h"
+#include "pitch_shifter.h"
 
 #define MIDI_CHANNEL     0  // default channel # is 0
 
@@ -13,9 +14,10 @@ Adafruit_NeoTrellisM4 trellis;
 BasicMIDI mode1;
 Seq mode2;
 Pedalboard mode3;
+Pitch_Shifter mode4;
 Accel bends;
 
-byte mode = 3;
+byte mode = 4;
 
 void setup(){
   Serial.begin(9600);
@@ -34,21 +36,32 @@ void setup(){
   mode1.begin(&trellis);
   mode2.begin(&trellis);
   mode3.begin(&trellis);
+  mode4.begin(&trellis);
   bends.begin(&trellis);
+
+  mode4.restart();
 
 }
 
 void loop() {
   // put your main code here, to run repeatedly:
   trellis.tick();
-  if(mode == 1){
-    mode1.run();
-    bends.run();
-  } else if (mode == 2){
-    mode2.run();
-    bends.run();
-  } else if (mode == 3){
-    mode3.run();
+
+  switch (mode){
+        case 1:
+          mode1.run();
+          bends.run();
+          break;
+        case 2:
+          mode2.run();
+          bends.run();
+          break;
+        case 3:
+          mode3.run();
+          break;
+        case 4:
+          mode4.run();
+          break;
   }
   
   midiEventPacket_t rx;
@@ -56,8 +69,22 @@ void loop() {
     rx = MidiUSB.read();
     if (rx.header != 0) {
       if(rx.header==0x0B){
-        if (rx.byte2 <= 3){
+        if (rx.byte2 <= 5){
           mode = rx.byte2;
+          switch (mode){
+            case 1:
+              mode1.restart();
+              break;
+            case 2:
+              mode2.restart();
+              break;
+            case 3:
+              mode3.restart();
+              break;
+            case 4:
+              mode4.restart();
+              break;
+          }
         } 
       }
     }

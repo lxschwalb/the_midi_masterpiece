@@ -1,21 +1,18 @@
-#ifndef basicMIDI_h
-#define basicMIDI_h
+#ifndef pitch_shifter_h
+#define pitch_shifter_h
 
 
 #include <Arduino.h>
 #include <Adafruit_NeoTrellisM4.h>
+#include "buttons.h"
 
-class BasicMIDI{
+class Pitch_Shifter{
   public:
-    BasicMIDI();
+    Pitch_Shifter();
     void run();
     void begin(Adafruit_NeoTrellisM4 *x);
     void restart();
-    byte root;
     
-    int color_mod, color_counter;
     Adafruit_NeoTrellisM4 *trellis;
-
 };
-
 #endif

@@ -1,10 +1,8 @@
 #include "pedalboard.h"
 
 Pedalboard *pedalboard;
-Accel boogie;
 
 Latch muff;
-//Latch boost;
 Latch quack;
 Latch quack_drive;
 Latch phaser;
@@ -40,9 +38,7 @@ Pedalboard::Pedalboard()
 
 void Pedalboard::begin(Adafruit_NeoTrellisM4 *x){
   trellis = x;
-  boogie.begin(trellis);
   
-//  boost.begin(x, 0xFF8800, 0x110A00, 24, 24, 1);
   muff.begin(x, 0xFF0000, 0x110000, 24, 24, 0);
   quack.begin(x, 0x8800FF, 0x080011, 25, 25, 0);
   quack_drive.begin(x, 0xCC00CC, 0x110011, 26, 26, 0);
@@ -71,6 +67,23 @@ void Pedalboard::begin(Adafruit_NeoTrellisM4 *x){
   reverb_mix.begin(x, 0x00FF66, 3, 3, default_presets, preset_locations);
   reverb_ratio.begin(x, 0x00FF66, 4, 4, default_presets, preset_locations);
   stuck.begin(x, 0x00FF22, 0x001108, 5, 5, 0);  
+}
+
+void Pedalboard::restart(){
+  muff.set_colors();
+  quack.set_colors();
+  quack_drive.set_colors();
+  mute.set_colors();
+  poweroff1.set_colors();
+  poweroff2.set_colors();
+  
+  phaser.set_colors();
+  trem.set_colors();
+
+  dilay.set_colors();
+  
+  reverb.set_colors();
+  stuck.set_colors();  
 }
 
 void Pedalboard::run() {
@@ -194,115 +207,4 @@ void Pedalboard::run() {
   }
 
   delay(10);
-}
-
-Latch::Latch()
-{
-}
-
-void Latch::begin(Adafruit_NeoTrellisM4 *x, long int on_color, long int off_color, byte location, byte message, bool start_state){
-  _on_color = on_color;
-  _off_color = off_color;
-  _location = location;
-  _message = message;
-  _on = start_state;
-  trellis = x;
-  if(start_state){
-    trellis->setPixelColor(_location, _on_color);
-  } else{
-    trellis->setPixelColor(_location, _off_color);
-  }
-}
-
-void Latch::pressed(){
-  _on = !_on;
-  if(_on){
-    trellis->setPixelColor(_location, _on_color);
-    trellis->controlChange(_message, 127);
-  } else{
-    trellis->setPixelColor(_location, _off_color);
-    trellis->controlChange(_message, 0);
-  }
-}
-
-Toggle::Toggle()
-{
-}
-
-void Toggle::begin(Adafruit_NeoTrellisM4 *x, long int on_color, long int off_color, byte location, byte message){
-  _on_color = on_color;
-  _off_color = off_color;
-  _location = location;
-  _message = message;
-  trellis = x;
-  trellis->setPixelColor(_location, _off_color);
-}
-
-void Toggle::pressed(){
-  trellis->setPixelColor(_location, _on_color);
-  trellis->controlChange(_message, 127);
-}
-
-void Toggle::released(){
-  trellis->setPixelColor(_location, _off_color);
-  trellis->controlChange(_message, 0);
-}
-
-Var::Var()
-{
-}
-
-void Var::begin(Adafruit_NeoTrellisM4 *x, long int color, byte location, byte message, byte *presets, byte *preset_locations){
-  _color = color;
-  _location = location;
-  _message = message;
-  _presets = presets;
-  _preset_locations = preset_locations;
-  _mode=0;
-  trellis = x;
-}
-
-void Var::pressed(){
-   switch (_mode){
-        case 0:
-          trellis->setPixelColor(_location, _color);
-          _mode=1;
-          break;
-        case 1:
-          trellis->setPixelColor(_location, 0xFFFFFF-_color);
-          _mode=2;
-          break;
-        case 2:
-          trellis->setPixelColor(_location, 0xFFFFFF);
-          _mode=3;
-          break;
-        case 3:
-          trellis->setPixelColor(_location, 0x000000);
-          _mode=0;
-          break;
-      }
-}
-
-void Var::sendMIDI(){
-   switch (_mode){
-        case 0:
-          break;
-        case 1:
-          trellis->controlChange(_message, boogie.yVal());
-          break;
-        case 2:
-          trellis->controlChange(_message, boogie.xVal());
-          break;
-        case 3:
-          if(trellis->isPressed(_preset_locations[0])){
-            trellis->controlChange(_message, _presets[0]);
-          } else if(trellis->isPressed(_preset_locations[1])){
-            trellis->controlChange(_message, _presets[1]);
-          } else if(trellis->isPressed(_preset_locations[2])){
-            trellis->controlChange(_message, _presets[2]);
-          }else if(trellis->isPressed(_preset_locations[3])){
-            trellis->controlChange(_message, _presets[3]);
-          }
-          break;
-      }
 }
