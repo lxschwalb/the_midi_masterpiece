@@ -1,9 +1,6 @@
 #ifndef buttons_h
 #define buttons_h
 
-
-#include <Arduino.h>
-#include <Adafruit_NeoTrellisM4.h>
 #include "accel.h"
 
 class Latch{
@@ -36,25 +33,27 @@ class Toggle{
     byte _message;
 };
 
-class Var{
+class Knob{
   public:
-    Var();
-    void begin(Adafruit_NeoTrellisM4 *x, long int color, byte location, byte message, byte *presets, byte *preset_locations);
+    Knob();
+    void begin(Adafruit_NeoTrellisM4 *x, long int color, byte location, byte message, byte *presets, byte *preset_selector);
     void pressed();
     void sendMIDI();
+    long int scale_color(long int color, int den);
     Adafruit_NeoTrellisM4 *trellis;
   private:
     long int _color;
     byte _location;
     byte _message;
     byte *_presets;
-    byte *_preset_locations;
+    byte *_preset_selector;
     byte _mode;
+    byte _val;
 };
 
-class Multi{
+class MultiCC{
   public:
-    Multi();
+    MultiCC();
     void begin(Adafruit_NeoTrellisM4 *x, long int *colors, byte *locations, byte message, byte *presets, byte len);
     void set_colors();
     void pressed(byte location);
@@ -68,4 +67,20 @@ class Multi{
     byte _active;
 };
 
+class Binary{
+  public:
+    Binary();
+    void begin(Adafruit_NeoTrellisM4 *x, long int color, byte *locations, byte len);
+    void set_colors();
+    void pressed(byte location);
+    byte evaluate();
+    Adafruit_NeoTrellisM4 *trellis;
+  private:
+    long int _color;
+    byte *_locations;
+    byte _len;
+    bool _bits[8];
+};
+
+long int Wheel(byte WheelPos, float b, Adafruit_NeoTrellisM4 *x);
 #endif

@@ -1,10 +1,8 @@
 #ifndef accel_h
 #define accel_h
 
-#include <Arduino.h>
 #include <Adafruit_NeoTrellisM4.h>
 #include <Adafruit_ADXL343.h>
-#include <Adafruit_Sensor.h>
 
 
 class Accel{

@@ -2,6 +2,20 @@
 
 Accel boogie;
 
+long int Wheel(byte WheelPos, float b, Adafruit_NeoTrellisM4 *x) {
+//  Adafruit_NeoTrellisM4 *trellis = basicMIDI->trellis;
+  WheelPos = 255 - WheelPos;
+  if(WheelPos < 85) {
+    return x->Color((255-WheelPos*3)*b, 0, WheelPos*3*b);
+  }
+  if(WheelPos < 170) {
+    WheelPos -= 85;
+    return x->Color(0, WheelPos*3*b, (255-WheelPos*3)*b);
+  }
+  WheelPos -= 170;
+  return x->Color(WheelPos*3*b, (255-WheelPos*3)*b, 0);
+}
+
 Latch::Latch()
 {
 }
@@ -60,71 +74,64 @@ void Toggle::released(){
   trellis->controlChange(_message, 0);
 }
 
-Var::Var()
+Knob::Knob()
 {
 }
 
-void Var::begin(Adafruit_NeoTrellisM4 *x, long int color, byte location, byte message, byte *presets, byte *preset_locations){
+void Knob::begin(Adafruit_NeoTrellisM4 *x, long int color, byte location, byte message, byte *presets, byte *preset_selector){
   _color = color;
   _location = location;
   _message = message;
   _presets = presets;
-  _preset_locations = preset_locations;
+  _preset_selector = preset_selector;
   _mode=0;
+  _val = 0;
   trellis = x;
   boogie.begin(trellis);
 }
 
-void Var::pressed(){
-   switch (_mode){
-        case 0:
-          trellis->setPixelColor(_location, _color);
-          _mode=1;
-          break;
-        case 1:
-          trellis->setPixelColor(_location, 0xFFFFFF-_color);
-          _mode=2;
-          break;
-        case 2:
-          trellis->setPixelColor(_location, 0xFFFFFF);
-          _mode=3;
-          break;
-        case 3:
-          trellis->setPixelColor(_location, 0x000000);
+void Knob::pressed(){
+  _mode += 1;
+  if(_mode>3){  
           _mode=0;
-          break;
-      }
+  }
 }
 
-void Var::sendMIDI(){
+void Knob::sendMIDI(){
    switch (_mode){
         case 0:
+          trellis->setPixelColor(_location, scale_color(_color, 10));
           break;
         case 1:
-          trellis->controlChange(_message, boogie.yVal());
+          _val = boogie.yVal();
+          trellis->controlChange(_message, _val);
+          trellis->setPixelColor(_location, scale_color(_color, _val));
           break;
         case 2:
-          trellis->controlChange(_message, boogie.xVal());
+          _val = boogie.xVal();
+          trellis->controlChange(_message, _val);
+          trellis->setPixelColor(_location, scale_color(0xFFFFFF-_color, _val));
           break;
         case 3:
-          if(trellis->isPressed(_preset_locations[0])){
-            trellis->controlChange(_message, _presets[0]);
-          } else if(trellis->isPressed(_preset_locations[1])){
-            trellis->controlChange(_message, _presets[1]);
-          } else if(trellis->isPressed(_preset_locations[2])){
-            trellis->controlChange(_message, _presets[2]);
-          }else if(trellis->isPressed(_preset_locations[3])){
-            trellis->controlChange(_message, _presets[3]);
-          }
+          _val = _presets[*_preset_selector];
+          trellis->setPixelColor(_location, scale_color(0xFFFFFF, _val));
+          trellis->controlChange(_message, _val);
           break;
       }
 }
 
-Multi::Multi()
+long int Knob::scale_color(long int color, int den){
+  int r = ((color >> 16) & 0xFF) *den/127.0;
+  int g = ((color >> 8) & 0xFF) *den/127.0;
+  int b = ((color) & 0xFF) *den/127.0;
+  return trellis->Color(r, g, b);
+}
+
+MultiCC::MultiCC()
 {
 }
 
-void Multi::begin(Adafruit_NeoTrellisM4 *x, long int *colors, byte *locations, byte message, byte *presets, byte len){
+void MultiCC::begin(Adafruit_NeoTrellisM4 *x, long int *colors, byte *locations, byte message, byte *presets, byte len){
   _colors = colors;
   _locations = locations;
   _message = message;
@@ -135,16 +142,56 @@ void Multi::begin(Adafruit_NeoTrellisM4 *x, long int *colors, byte *locations, b
   trellis = x;
 }
 
-void Multi::set_colors(){
+void MultiCC::set_colors(){
   for(byte i=0; i<_len; i++){
     trellis->setPixelColor(_locations[i], _colors[i]);
   }
   trellis->setPixelColor(_locations[_active], 0xFFFFFF);
 }
 
-void Multi::pressed(byte number){
+void MultiCC::pressed(byte number){
   trellis->setPixelColor(_locations[_active], _colors[_active]);
   _active=number;   
   trellis->setPixelColor(_locations[number], 0xFFFFFF);
   trellis->controlChange(_message, _presets[number]);
+}
+
+Binary::Binary()
+{
+}
+
+void Binary::begin(Adafruit_NeoTrellisM4 *x, long int color, byte *locations, byte len){
+  _color = color;
+  _locations = locations;
+  _len = len;
+  
+  trellis = x;
+}
+
+void Binary::set_colors(){
+  for(byte i=0; i<_len; i++){
+    if(_bits[i]){
+      trellis->setPixelColor(_locations[i], _color);
+    }
+  }
+}
+
+void Binary::pressed(byte number){
+  _bits[number] = !_bits[number];
+  if(_bits[number]){
+    trellis->setPixelColor(_locations[number], _color);
+  } else{
+    trellis->setPixelColor(_locations[number], 0x000000);
+  }
+}
+
+byte Binary::evaluate(){
+  byte value = 0;
+  byte pow_of_2[8] = {1, 2, 4, 8, 16, 32, 64, 128};
+  for(byte i=0; i<_len; i++){
+    if(_bits[i]){
+      value += pow_of_2[i];
+    }
+  }
+  return value;
 }

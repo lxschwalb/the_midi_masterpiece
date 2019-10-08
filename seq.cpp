@@ -1,19 +1,12 @@
 #include "seq.h"
 
-Seq *seq;
-int colours[] = {0x000000, 0xFF0000, 0x00FF00, 0x0000FF};
-bool beatFlag = false;
-
 Seq::Seq(){
   root = 32;
-  seq = this;
 }
 
-void processNotes(int px){
-  Adafruit_NeoTrellisM4 *trellis = seq->trellis;
-  byte root= seq->root;
-  byte shift = seq->note_memory[px];
-  byte note = 0;
+void Seq::processNotes(int px){
+  byte shift = note_memory[px];
+  byte note;
   int last_px = px-1;
   if (last_px==-1 || last_px==7 || last_px==15 || last_px==23){
     last_px+=8;
@@ -30,25 +23,17 @@ void processNotes(int px){
   }
 
   
-  trellis->setPixelColor(last_px, colours[seq->note_memory[last_px]]);  
+  trellis->setPixelColor(last_px, colours[note_memory[last_px]]);  
   trellis->setPixelColor(px, 0xFFFFFF - colours[shift]);
   if(shift != 0){
     trellis->noteOn(note, 100);
   } 
 }
 
-void newBeat(){
-  beatFlag = true;
-  seq->beat += 1;
-  if(seq->beat>7){
-    seq->beat = 0;
-  }
-}
-
-void Seq::begin(Adafruit_NeoTrellisM4 *x){
+void Seq::begin(Adafruit_NeoTrellisM4 *x, bool *interupt_flag){
   trellis = x;
   beat = 0;
-  TC.startTimer(100000, newBeat);
+  _interupt_flag = interupt_flag;
 }
 
 void Seq::restart(){
@@ -73,8 +58,12 @@ void Seq::run() {
       trellis->setPixelColor(butt, colours[note_memory[butt]]);
     }
   }
-  if(beatFlag){
-    beatFlag = false;
+  if(*_interupt_flag){
+    *_interupt_flag = false;
+    beat += 1;
+    if(beat>7){
+      beat = 0;
+    }
     trellis->controlChange(123, 123);
     processNotes(beat);
     processNotes(beat+8);

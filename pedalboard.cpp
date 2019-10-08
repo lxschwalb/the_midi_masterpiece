@@ -1,39 +1,7 @@
 #include "pedalboard.h"
 
-Pedalboard *pedalboard;
-
-Latch muff;
-Latch quack;
-Latch quack_drive;
-Latch phaser;
-Latch trem;
-Latch dilay;
-Latch reverb;
-Latch stuck;
-Toggle mute;
-Toggle poweroff1;
-Toggle poweroff2;
-
-Var quack_peak;
-Var phase_rate;
-Var phase_depth;
-Var phase_spread;
-Var phase_res;
-Var trem_rate;
-Var delay_blend;
-Var delay_fb;
-Var reverb_shimmer;
-Var reverb_decay;
-Var reverb_mix;
-Var reverb_ratio;
-
-
-byte preset_locations[4] = {7, 15, 23, 31};
-byte default_presets[4] = {0, 42, 85, 127};
-
 Pedalboard::Pedalboard()
 {
-  pedalboard = this;
 }
 
 void Pedalboard::begin(Adafruit_NeoTrellisM4 *x){
@@ -42,31 +10,34 @@ void Pedalboard::begin(Adafruit_NeoTrellisM4 *x){
   muff.begin(x, 0xFF0000, 0x110000, 24, 24, 0);
   quack.begin(x, 0x8800FF, 0x080011, 25, 25, 0);
   quack_drive.begin(x, 0xCC00CC, 0x110011, 26, 26, 0);
-  quack_peak.begin(x, 0x8800FF, 27, 27, default_presets, preset_locations);
+  quack_peak.begin(x, 0x8800FF, 27, 27, default_presets, &preset_pointer);
   mute.begin(x, 0x000000, 0xFF8888, 28, 28);
   poweroff1.begin(x, 0x000000, 0x8888FF, 29, 29);
   poweroff2.begin(x, 0x000000, 0x88FF88, 30, 30);
   
   phaser.begin(x, 0x00FF00, 0x001100, 16, 16, 0);
-  phase_rate.begin(x, 0x00FF00, 17, 17, default_presets, preset_locations);
-  phase_depth.begin(x, 0x00FF00, 18, 18, default_presets, preset_locations);
-  phase_spread.begin(x, 0x00FF00, 19, 19, default_presets, preset_locations);
-  phase_res.begin(x, 0x00FF00, 20, 20, default_presets, preset_locations);
+  phase_rate.begin(x, 0x00FF00, 17, 17, default_presets, &preset_pointer);
+  phase_depth.begin(x, 0x00FF00, 18, 18, default_presets, &preset_pointer);
+  phase_spread.begin(x, 0x00FF00, 19, 19, default_presets, &preset_pointer);
+  phase_res.begin(x, 0x00FF00, 20, 20, default_presets, &preset_pointer);
   trem.begin(x, 0xFF3300, 0x110500, 21, 21, 0);
-  trem_rate.begin(x, 0xFF3300, 22, 22, default_presets, preset_locations);
+  trem_rate.begin(x, 0xFF3300, 22, 22, default_presets, &preset_pointer);
 
   
   dilay.begin(x, 0x0000FF, 0x000011, 8, 8, 0);
-  delay_blend.begin(x, 0x0000FF, 9, 9, default_presets, preset_locations);
-  delay_fb.begin(x, 0x0000FF, 10, 10, default_presets, preset_locations);
+  delay_blend.begin(x, 0x0000FF, 9, 9, default_presets, &preset_pointer);
+  delay_fb.begin(x, 0x0000FF, 10, 10, default_presets, &preset_pointer);
+  tap.begin(x, 0xFFFF00, 0x000FF, 11, 11);
 
   
   reverb.begin(x, 0x00FF66, 0x001111, 0, 0, 0);
-  reverb_shimmer.begin(x, 0x00FF66, 1, 1, default_presets, preset_locations);
-  reverb_decay.begin(x, 0x00FF66, 2, 2, default_presets, preset_locations);
-  reverb_mix.begin(x, 0x00FF66, 3, 3, default_presets, preset_locations);
-  reverb_ratio.begin(x, 0x00FF66, 4, 4, default_presets, preset_locations);
-  stuck.begin(x, 0x00FF22, 0x001108, 5, 5, 0);  
+  reverb_shimmer.begin(x, 0x00FF66, 1, 1, default_presets, &preset_pointer);
+  reverb_decay.begin(x, 0x00FF66, 2, 2, default_presets, &preset_pointer);
+  reverb_mix.begin(x, 0x00FF66, 3, 3, default_presets, &preset_pointer);
+  reverb_ratio.begin(x, 0x00FF66, 4, 4, reverb_presets, &preset_pointer);
+  stuck.begin(x, 0x00FF22, 0x001108, 5, 5, 0);
+
+  bin.begin(x, 0xFFFFFF, bin_locations, 4);
 }
 
 void Pedalboard::restart(){
@@ -81,12 +52,16 @@ void Pedalboard::restart(){
   trem.set_colors();
 
   dilay.set_colors();
+  tap.set_colors();
   
   reverb.set_colors();
   stuck.set_colors();  
+
+  bin.set_colors();
 }
 
 void Pedalboard::run() {
+  preset_pointer = bin.evaluate();
   while (trellis->available()){
     keypadEvent e = trellis->read();
     int key = e.bit.KEY;
@@ -115,7 +90,9 @@ void Pedalboard::run() {
         case 6:
           trellis->setPixelColor(6, 0xFFFFFF);
           break;
-          
+        case 7:
+          bin.pressed(0);
+          break;
         case 8:
           dilay.pressed();
           break;
@@ -125,7 +102,14 @@ void Pedalboard::run() {
          case 10:
           delay_fb.pressed();
           break;
+         case 11:
+          tap.pressed();
+          break;
 
+          
+        case 15:
+          bin.pressed(1);
+          break;
         case 16:
           phaser.pressed();
           break;
@@ -147,7 +131,9 @@ void Pedalboard::run() {
         case 22:
           trem_rate.pressed();
           break;
-          
+        case 23:
+          bin.pressed(2);
+          break;          
         case 24:
           muff.pressed();
           break; 
@@ -168,7 +154,10 @@ void Pedalboard::run() {
           break; 
         case 30:
           poweroff2.pressed();
-          break; 
+          break;
+        case 31:
+          bin.pressed(3);
+          break;
       }
     }
 
@@ -177,6 +166,9 @@ void Pedalboard::run() {
       switch (key){
         case 6:
           trellis->setPixelColor(6, 0x000000);
+          break;
+        case 11:
+          tap.released();
           break;
         case 28:
           mute.released();

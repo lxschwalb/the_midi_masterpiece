@@ -1,23 +1,29 @@
-#include <Adafruit_NeoTrellisM4.h>
+#include <SAMD51_InterruptTimer.h>
 #include "MIDIUSB.h"
 
 #include "seq.h"
 #include "basicMIDI.h"
-#include "accel.h"
 #include "pedalboard.h"
-#include "pitch_shifter.h"
+#include "crazy_pitches.h"
+#include "game_of_life.h"
 
 #define MIDI_CHANNEL     0  // default channel # is 0
 
 Adafruit_NeoTrellisM4 trellis;
 
+GameOfLife mode0;
 BasicMIDI mode1;
 Seq mode2;
 Pedalboard mode3;
-Pitch_Shifter mode4;
+Crazy_Pitches mode4;
 Accel bends;
 
-byte mode = 4;
+byte mode = 0;
+bool interupt_flag = false;
+
+void set_interrupt_flag(){
+  interupt_flag = true;
+}
 
 void setup(){
   Serial.begin(9600);
@@ -33,14 +39,19 @@ void setup(){
   Serial.println("Enabling MIDI on UART");
   trellis.enableUARTMIDI(true);
   trellis.setUARTMIDIchannel(MIDI_CHANNEL);
+  
+  mode0.begin(&trellis, &interupt_flag);
   mode1.begin(&trellis);
-  mode2.begin(&trellis);
+  mode2.begin(&trellis, &interupt_flag);
   mode3.begin(&trellis);
   mode4.begin(&trellis);
   bends.begin(&trellis);
 
-  mode4.restart();
+  mode0.restart();
 
+
+  
+  TC.startTimer(1000000, set_interrupt_flag);
 }
 
 void loop() {
@@ -48,6 +59,9 @@ void loop() {
   trellis.tick();
 
   switch (mode){
+        case 0:
+          mode0.run();
+          break;
         case 1:
           mode1.run();
           bends.run();
@@ -72,6 +86,9 @@ void loop() {
         if (rx.byte2 <= 5){
           mode = rx.byte2;
           switch (mode){
+            case 0:
+              mode0.restart();
+              break;
             case 1:
               mode1.restart();
               break;
